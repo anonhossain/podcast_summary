@@ -1,0 +1,19 @@
+# Virtual environments
+.venv/
+venv/
+
+# Environment variables
+.env
+
+# Python cache
+__pycache__/
+*.py[codz]
+
+# Local files / assets
+files/
+models/
+
+# OS / editor junk
+.DS_Store
+.vscode/
+.idea/
