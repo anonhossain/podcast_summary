@@ -63,3 +63,66 @@ async def transcribe_audio(file: UploadFile = File(...)):
 
     finally:
         file.file.close()
+
+
+
+
+
+
+
+
+#####################################################################
+
+
+
+
+
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import StreamingResponse
+from tempfile import TemporaryDirectory
+from pathlib import Path
+import shutil
+import os
+
+from backend.orchestrator import PodcastOrchestrator
+
+app = FastAPI(title="Podcast Shortener API")
+
+orchestrator = PodcastOrchestrator()
+
+
+@app.post("/process", response_class=StreamingResponse)
+def process_media(file: UploadFile = File(...)):
+    try:
+        with TemporaryDirectory() as tmpdir:
+            tmpdir = Path(tmpdir)
+
+            input_path = tmpdir / file.filename
+
+            # Save upload INSIDE temp dir
+            with open(input_path, "wb") as f:
+                shutil.copyfileobj(file.file, f)
+
+            # Run full pipeline
+            output_path = orchestrator.process(
+                input_file_path=str(input_path),
+                work_dir=tmpdir,
+            )
+
+            # Stream output
+            def file_iterator():
+                with open(output_path, "rb") as f:
+                    yield from f
+
+            return StreamingResponse(
+                file_iterator(),
+                media_type="application/octet-stream",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{output_path.name}"'
+                },
+            )
+
+        # 🧹 TempDirectory auto-deletes EVERYTHING here
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
