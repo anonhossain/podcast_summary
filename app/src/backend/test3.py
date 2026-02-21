@@ -783,22 +783,41 @@ def create_podcast_supercut(
     # 3. Using the file from temp to crop
     audio = AudioSegment.from_file(working_audio_path)
     combined = AudioSegment.empty()
-    silence = AudioSegment.silent(duration=gap_ms, frame_rate=audio.frame_rate)
+
+    # Define your custom cut-point silence (e.g., 75ms)
+    cut_silence_duration = 75 
+    cut_silence = AudioSegment.silent(duration=cut_silence_duration, frame_rate=audio.frame_rate)
 
     for i, seg in enumerate(fixed_segments):
-        start = max(0, seg["start"] - head_padding_ms)
-        end = seg["end"] + tail_padding_ms
-        clip = audio[start:end]
-        clip = clip.fade_in(fade_ms).fade_out(fade_ms)
+        # Determine if this segment is part of a continuous block or a new cut
+        is_prev_contiguous = (i > 0 and fixed_segments[i-1]["segment_id"] == seg["segment_id"] - 1)
+        is_next_contiguous = (i < len(fixed_segments) - 1 and fixed_segments[i+1]["segment_id"] == seg["segment_id"] + 1)
+
+        # 1. Calculate Start/End with padding ONLY at the boundaries of a cut
+        # This prevents the "double-word" overlap
+        start_point = seg["start"] - (head_padding_ms if not is_prev_contiguous else 0)
+        end_point = seg["end"] + (tail_padding_ms if not is_next_contiguous else 0)
+        
+        # Ensure we don't go below 0
+        start_point = max(0, start_point)
+        
+        clip = audio[start_point:end_point]
+
+        # 2. Apply fades only at the start and end of a full narrative "chunk"
+        if not is_prev_contiguous:
+            clip = clip.fade_in(fade_ms)
+        if not is_next_contiguous:
+            clip = clip.fade_out(fade_ms)
+
+        # 3. Append the audio
         combined += clip
 
-        if i < len(fixed_segments) - 1:
-            next_seg = fixed_segments[i + 1]
-            if next_seg["segment_id"] > seg["segment_id"] + 1:
-                combined += silence
+        # 4. If the NEXT segment is a "cut" (not sequential), add your silent gap
+        if i < len(fixed_segments) - 1 and not is_next_contiguous:
+            combined += cut_silence
 
-    # 5. Ensure output format matches input format
-    final_filename = f"{output_filename}.{input_extension}"
+    # ── 5. Export ──────────────────────────────────────────────────────────────
+    final_filename = f"{base_name}_cropped.{input_extension}"
     final_audio_path = os.path.join(output_dir, final_filename)
     combined.export(final_audio_path, format=input_extension, bitrate="192k")
 
@@ -823,9 +842,9 @@ if __name__ == "__main__":
         percent = float(val)
 
         result = create_podcast_supercut(
-            audio_path=r"app/files/Tucker.mp3",
+            audio_path=r"app\files\demo\Walid - Outdoor Interview - UGC - UnlimitEd.mp3",
             target_percent=percent,
-            output_dir=r"app/files/test3",
+            output_dir=r"app/files/test",
             gap_ms=200
         )
 
