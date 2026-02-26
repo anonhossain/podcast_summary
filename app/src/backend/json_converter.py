@@ -38,7 +38,7 @@ def export_segments_to_txt(json_input_path, output_dir):
 if __name__ == "__main__":
     # Example Usage:
     # Use the 'r' prefix for Raw strings
-    input_file = r"C:\files\podcast\app\files\test\Walid - Outdoor Interview - UGC - UnlimitEd\Walid - Outdoor Interview - UGC - UnlimitEd_full.json"
+    input_file = r"C:\files\podcast\app\files\test\Canadian Mother - Complete\Canadian Mother Outraged Over Doctor Euthanizing MENTALLY ILL Son!_full.json"
     target_folder = r"C:\files\podcast\app\files\test\output_texts"
     
     export_segments_to_txt(input_file, target_folder)
